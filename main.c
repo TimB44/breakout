@@ -1,33 +1,52 @@
 #include "defs.h"
 
+#include "raylib.h"
+
 int main(void) {
-  InitWindow(SCREEN_WIDTH, SCREEN_HIGHT, "Pong Game");
+  SetConfigFlags(FLAG_WINDOW_HIGHDPI);
+  InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
   SetTargetFPS(60);
 
   while (!WindowShouldClose()) {
-    update_game();
-    draw_game();
+    update();
+    draw();
   }
 
   CloseWindow();
   return 0;
 }
 
-void update_game(void) {
-  switch (current_state) {
-  case GAME:
-    // TOOD:
-    break;
-  case HOME:
-  case END:
-    break;
-  default:
-    assert(false);
-  }
+void update(void) {
+  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    switch (current_state) {
+    case HOME:
+      current_state = GAME;
+      break;
+    case GAME:
+      current_state = END;
+      break;
+    case END:
+      current_state = HOME;
+      break;
+    default:
+      assert(false);
+    }
 }
-void draw_game(void) {
+
+void draw(void) {
   BeginDrawing();
   ClearBackground(BLACK);
-  DrawText("Hello Pong!", 350, 280, 20, RAYWHITE);
+
+  switch (current_state) {
+  case HOME:
+    DrawText("HOME", 0, 0, 20, RAYWHITE);
+    break;
+  case GAME:
+    DrawText("GAME", 0, 0, 20, RAYWHITE);
+    break;
+  case END:
+    DrawText("END", 0, 0, 20, RAYWHITE);
+    break;
+  }
   EndDrawing();
 }

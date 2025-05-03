@@ -12,9 +12,12 @@
 
 // constants
 
-const size_t SCREEN_HIGHT = 600;
-const size_t SCREEN_WIDTH = 800;
-const size_t PLATFORM_SIZE = 100;
+const char *WINDOW_TITLE = "Pong Game";
+
+const size_t WINDOW_HEIGHT = 600;
+const size_t WINDOW_WIDTH = 800;
+
+const size_t PLATFORM_SIZE = 80;
 
 const size_t BLOCK_WIDTH = 10;
 const size_t BLOCK_HEIGHT = 35;
@@ -38,5 +41,9 @@ bool grid[GRID_HEIGHT][GRID_WIDTH];
 
 // main.c
 int main(void);
-void update_game(void);
-void draw_game(void);
+void update(void);
+void draw(void);
+
+// home.c
+void update_home(void);
+void draw_home(void);
