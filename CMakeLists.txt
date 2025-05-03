@@ -6,7 +6,12 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(external/raylib)
 
-add_executable(block-breaker main.c)
+add_executable(block-breaker 
+  main.c
+  defs.c
+  utils.c
+  home.c
+)
 target_link_libraries(block-breaker raylib)
 target_include_directories(block-breaker PRIVATE
   ./external/raylib/src/
