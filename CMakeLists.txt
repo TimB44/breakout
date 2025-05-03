@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.10)
-project(BlockBreaker C)
+project(breakout C)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 add_subdirectory(external/raylib)
 
-add_executable(block-breaker 
+add_executable(breakout 
   main.c
   defs.c
   utils.c
