@@ -33,7 +33,7 @@ void update(void) {
 
 void draw(void) {
   BeginDrawing();
-  ClearBackground(BLACK);
+  ClearBackground(COLOR_BG);
 
   switch (current_state) {
   case HOME:
