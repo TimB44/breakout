@@ -11,18 +11,28 @@ static const size_t LARGE_PLATFORM_WIDTH = 80;
 static const size_t SMALL_PLATFORM_WIDTH = 40;
 static const size_t BLOCK_WIDTH = 25;
 static const size_t BLOCK_HEIGHT = 10;
-static const size_t BLOCK_MARGIN = 2;
+static const size_t BLOCK_MARGIN = 3;
 static const size_t STARTING_BALLS = 3;
+static const size_t GRID_START_Y = 50;
+
 static const float PLATFORM_MOVMENT_PER_MS = 0.25;
 static const float PLATFORM_Y_POS = 600 - 100;
-static const float PLATFORM_HEIGHT = 15;
+static const float PLATFORM_HEIGHT = 10;
+static const float BALL_SIZE = 10;
 
 #define GAME_WIDTH (BLOCK_WIDTH * GRID_WIDTH + (GRID_WIDTH + 1) * BLOCK_MARGIN)
+#define GAME_HEIGHT 550
 #define GAME_START ((WINDOW_WIDTH - GAME_WIDTH) / 2.0f)
 
 static const size_t GAME_BORDER_WIDTH = 3;
 static const bool PRESNT = false;
 static const bool BROKEN = true;
+static const Color BLOCK_COLORS[GRID_WIDTH / 2] = {
+    {.r = 150, .g = 44, .b = 25, .a = 255},
+    {.r = 185, .g = 136, .b = 47, .a = 255},
+    {.r = 59, .g = 131, .b = 61, .a = 255},
+    {.r = 194, .g = 194, .b = 74, .a = 255},
+};
 
 typedef enum BallSpeed {
   SLOW,
@@ -89,18 +99,31 @@ void init_game(void) {
 
 void update_game(void) { update_platform(); }
 void draw_game(void) {
-  printf("POS AT x = %f, y = %f\n", platform_pos.x, platform_pos.y);
+  DrawRectangleRec(
+      (Rectangle){
+          .x = GAME_START,
+          .y = (WINDOW_HEIGHT - GAME_HEIGHT) / 2,
+          .width = GAME_WIDTH,
+          .height = GAME_HEIGHT,
+      },
+      COLOR_MENU_BG);
   Rectangle platform_rect = {.x = platform_pos.x - (cur_platform_width / 2.0),
                              .y = platform_pos.y - (PLATFORM_HEIGHT / 2.0),
                              .width = cur_platform_width,
                              .height = PLATFORM_HEIGHT};
 
-  printf("RECT AT x = %f, y = %f, width = %f, height = %f\n", platform_rect.x,
-         platform_rect.y, platform_rect.width, platform_rect.height);
   DrawRectangleRec(platform_rect, COLOR_PLATFORM);
 
-  // for (size_t row = 0; row < GRID_HEIGHT; row++) {
-  //   for (size_t col = 0; col < GRID_WIDTH; col++) {
-  //   }
-  // }
+  for (size_t row = 0; row < GRID_HEIGHT; row++) {
+    for (size_t col = 0; col < GRID_WIDTH; col++) {
+      Rectangle block_rect = {
+          .x = GAME_START + BLOCK_MARGIN + (BLOCK_MARGIN + BLOCK_WIDTH) * col,
+          .y = GRID_START_Y + (BLOCK_MARGIN + BLOCK_HEIGHT) * row,
+          .width = BLOCK_WIDTH,
+          .height = BLOCK_HEIGHT,
+      };
+
+      DrawRectangleRec(block_rect, BLOCK_COLORS[row / 2]);
+    }
+  }
 }
