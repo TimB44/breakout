@@ -3,16 +3,33 @@
 
 static const float MENU_BORDER_WIDTH = 10;
 
-static const Rectangle MENU = {.x = 200, .y = 100, .width = 400, .height = 400};
+static const Rectangle MENU = {
+    .x = 200,
+    .y = 100,
+    .width = 400,
+    .height = 400,
+};
 
 static const Rectangle MENU_BORDER = {
-    .x = 197, .y = 97, .width = 406, .height = 406};
+    .x = 197,
+    .y = 97,
+    .width = 406,
+    .height = 406,
+};
 
 static const Rectangle START_BTN = {
-    .x = 300, .y = 350, .width = 200, .height = 125};
+    .x = 300,
+    .y = 350,
+    .width = 200,
+    .height = 125,
+};
 
 static const Rectangle START_BTN_BORDER = {
-    .x = 297, .y = 347, .width = 206, .height = 131};
+    .x = 297,
+    .y = 347,
+    .width = 206,
+    .height = 131,
+};
 
 static bool start_btn_hovered = false;
 
