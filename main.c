@@ -1,5 +1,4 @@
 #include "defs.h"
-
 #include "raylib.h"
 
 int main(void) {
@@ -17,20 +16,19 @@ int main(void) {
 }
 
 void update(void) {
-  if (IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
-    switch (current_state) {
-    case HOME:
-      current_state = GAME;
-      break;
-    case GAME:
-      current_state = END;
-      break;
-    case END:
-      current_state = HOME;
-      break;
-    default:
-      assert(false);
-    }
+  switch (current_state) {
+  case HOME:
+    update_home();
+    break;
+  case GAME:
+    // current_state = END;
+    break;
+  case END:
+    // current_state = HOME;
+    break;
+  default:
+    assert(false);
+  }
 }
 
 void draw(void) {
@@ -39,7 +37,7 @@ void draw(void) {
 
   switch (current_state) {
   case HOME:
-    DrawText("HOME", 0, 0, 20, RAYWHITE);
+    draw_home();
     break;
   case GAME:
     DrawText("GAME", 0, 0, 20, RAYWHITE);
@@ -49,4 +47,8 @@ void draw(void) {
     break;
   }
   EndDrawing();
+}
+void transition_state(GameState new_state) {
+  // TOOD: update the game board
+  current_state = new_state;
 }
