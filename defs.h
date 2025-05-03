@@ -5,8 +5,6 @@
 #include <stddef.h>
 
 // macros
-#define GRID_WIDTH 14
-#define GRID_HEIGHT 8
 
 // types
 
@@ -21,12 +19,6 @@ typedef enum GameState {
 extern const char *WINDOW_TITLE;
 extern const size_t WINDOW_HEIGHT;
 extern const size_t WINDOW_WIDTH;
-extern const size_t PLATFORM_SIZE;
-extern const size_t BLOCK_WIDTH;
-extern const size_t BLOCK_HEIGHT;
-extern const size_t BLOCK_MARGIN;
-extern const size_t BORDER_WIDTH;
-
 extern const float MENU_ROUNDESS;
 
 extern const Color COLOR_BG;
@@ -35,10 +27,9 @@ extern const Color COLOR_BUTTON_HOVER;
 extern const Color COLOR_BUTTON;
 extern const Color COLOR_MENU_BG;
 extern const Color COLOR_MENU_BORDER;
-
+extern const Color COLOR_PLATFORM;
 // globals
 extern GameState current_state;
-extern bool grid[GRID_HEIGHT][GRID_WIDTH];
 
 // function declaration
 
@@ -52,8 +43,12 @@ void transition_state(GameState);
 void update_home(void);
 void draw_home(void);
 
-// utils.c
+// game.c
+void init_game(void);
+void update_game(void);
+void draw_game(void);
 
+// utils.c
 void draw_text_centered(const char *, size_t, size_t, size_t);
 bool mouse_over(Rectangle);
 bool mouse_pressed_on(Rectangle);

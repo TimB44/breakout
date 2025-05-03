@@ -21,7 +21,7 @@ void update(void) {
     update_home();
     break;
   case GAME:
-    // current_state = END;
+    update_game();
     break;
   case END:
     // current_state = HOME;
@@ -40,7 +40,8 @@ void draw(void) {
     draw_home();
     break;
   case GAME:
-    DrawText("GAME", 0, 0, 20, RAYWHITE);
+
+    draw_game();
     break;
   case END:
     DrawText("END", 0, 0, 20, RAYWHITE);
@@ -49,6 +50,13 @@ void draw(void) {
   EndDrawing();
 }
 void transition_state(GameState new_state) {
-  // TOOD: update the game board
+  switch (new_state) {
+  case GAME:
+    init_game();
+    break;
+  case HOME:
+  case END:
+    break;
+  }
   current_state = new_state;
 }

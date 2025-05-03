@@ -11,12 +11,13 @@ add_executable(breakout
   defs.c
   utils.c
   home.c
+  game.c
 )
-target_link_libraries(block-breaker raylib)
-target_include_directories(block-breaker PRIVATE
+target_link_libraries(breakout raylib)
+target_include_directories(breakout PRIVATE
   ./external/raylib/src/
 )
 
 if(UNIX AND NOT APPLE)
-    target_link_libraries(pong m dl pthread)
+    target_link_libraries(breakout m dl pthread)
 endif()
