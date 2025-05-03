@@ -54,5 +54,6 @@ const Color COLOR_PLATFORM = {
     .a = 255,
 };
 
+const Color COLOR_BALL = SKYBLUE;
 // globals
 GameState current_state = HOME;

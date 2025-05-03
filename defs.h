@@ -28,6 +28,7 @@ extern const Color COLOR_BUTTON;
 extern const Color COLOR_MENU_BG;
 extern const Color COLOR_MENU_BORDER;
 extern const Color COLOR_PLATFORM;
+extern const Color COLOR_BALL;
 // globals
 extern GameState current_state;
 

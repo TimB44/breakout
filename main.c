@@ -40,7 +40,6 @@ void draw(void) {
     draw_home();
     break;
   case GAME:
-
     draw_game();
     break;
   case END:
