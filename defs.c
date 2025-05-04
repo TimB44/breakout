@@ -2,8 +2,6 @@
 
 // constants (definitions)
 const char *WINDOW_TITLE = "Pong Game";
-const size_t WINDOW_HEIGHT = 600;
-const size_t WINDOW_WIDTH = 800;
 
 const float MENU_ROUNDESS = 0.2;
 

@@ -5,6 +5,8 @@
 #include <stddef.h>
 
 // macros
+#define WINDOW_HEIGHT 600
+#define WINDOW_WIDTH 800
 
 // types
 
@@ -17,8 +19,6 @@ typedef enum GameState {
 // constants
 
 extern const char *WINDOW_TITLE;
-extern const size_t WINDOW_HEIGHT;
-extern const size_t WINDOW_WIDTH;
 extern const float MENU_ROUNDESS;
 
 extern const Color COLOR_BG;
