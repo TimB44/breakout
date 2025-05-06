@@ -4,6 +4,7 @@
 #include "raymath.h"
 #include <stddef.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #define GRID_WIDTH 14
@@ -21,8 +22,8 @@
 #define PLATFORM_Y_POS 600 - 100
 #define PLATFORM_HEIGHT 10
 
-#define SLOW_BALL_MOVMENT_PER_MS 0.1
-#define FAST_BALL_MOVMENT_PER_MS 0.3
+#define SLOW_BALL_MOVMENT_PER_MS 0.2
+#define FAST_BALL_MOVMENT_PER_MS 0.4
 #define BALL_SIZE 10
 
 #define GAME_WIDTH (BLOCK_WIDTH * GRID_WIDTH + (GRID_WIDTH + 1) * BLOCK_MARGIN)
@@ -31,7 +32,7 @@
 #define GAME_START_Y (WINDOW_HEIGHT - GAME_HEIGHT) / 2.0
 
 #define GAME_BORDER_WIDTH 3
-#define PRESNT false
+#define PRESENT false
 #define BROKEN true
 
 #define BLOCK_COLOR_GROUP_SIZE 2
@@ -77,6 +78,11 @@ typedef enum Level {
   SECOND,
 } Level;
 
+typedef struct CollisionResult {
+  Vector2 undo_move;
+  Vector2 reflection;
+} CollisionResult;
+
 // false => present
 // true  => broken
 static bool grid[GRID_HEIGHT][GRID_WIDTH];
@@ -109,9 +115,9 @@ void init_game(void) {
 
 static void update_platform() {
   float frame_time = GetFrameTime() * 1000;
-  if (IsKeyDown(KEY_A) | IsKeyDown(KEY_LEFT)) {
+  if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
     platform_x_vel = -PLATFORM_MOVMENT_PER_MS;
-  } else if (IsKeyDown(KEY_D) | IsKeyDown(KEY_RIGHT)) {
+  } else if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
     platform_x_vel = PLATFORM_MOVMENT_PER_MS;
   } else {
     platform_x_vel = 0;
@@ -126,7 +132,7 @@ static void update_platform() {
   platform_pos.x = new_x;
 }
 
-static Vector2 check_overlap(Rectangle ball, Rectangle obstacle) {
+static CollisionResult check_overlap(Rectangle ball, Rectangle obstacle) {
   float horizontal_overlap =
       fminf(ball.x + ball.width, obstacle.x + obstacle.width) -
       fmaxf(ball.x, obstacle.x);
@@ -136,21 +142,33 @@ static Vector2 check_overlap(Rectangle ball, Rectangle obstacle) {
       fmaxf(ball.y, obstacle.y);
 
   if (horizontal_overlap < 0 || vertical_overlap < 0)
-    return Vector2Zero();
+    return (CollisionResult){
+        .undo_move = Vector2Zero(),
+        .reflection = Vector2Zero(),
+    };
 
   Vector2 dir_to_move = Vector2Scale(ball_dir, -1);
   float horizontal_scale = horizontal_overlap / fabsf(dir_to_move.x);
-  dir_to_move = Vector2Scale(dir_to_move, horizontal_overlap);
   float vertical_scale = vertical_overlap / fabsf(dir_to_move.y);
-  if (vertical_scale < 1.0)
-    dir_to_move = Vector2Scale(dir_to_move, vertical_scale);
+  dir_to_move =
+      Vector2Scale(dir_to_move, fminf(horizontal_scale, vertical_scale));
 
-  return dir_to_move;
+  Vector2 reflection = fabsf(horizontal_overlap) < fabsf(vertical_overlap)
+                           ? (Vector2){.x = -1, .y = 1}
+                           : (Vector2){.x = 1, .y = -1};
+  return (CollisionResult){
+      .undo_move = dir_to_move,
+      .reflection = reflection,
+  };
 }
 
-static Vector2 check_block_collisions(Rectangle ball, size_t *row,
-                                      size_t *col) {
-  Vector2 max_overlap = Vector2Zero();
+static CollisionResult check_block_collisions(Rectangle ball, size_t *row,
+                                              size_t *col) {
+  CollisionResult max = (CollisionResult){
+      .undo_move = Vector2Zero(),
+      .reflection = Vector2Zero(),
+  };
+
   int out_row = -1;
   int out_col = -1;
   // TODO optimize loops to only check 4 boxes
@@ -163,9 +181,9 @@ static Vector2 check_block_collisions(Rectangle ball, size_t *row,
             .width = BLOCK_WIDTH,
             .height = BLOCK_HEIGHT,
         };
-        Vector2 new_overlap = check_overlap(ball, block_rect);
-        if (Vector2LengthSqr(new_overlap) > Vector2LengthSqr(max_overlap)) {
-          max_overlap = new_overlap;
+        CollisionResult new = check_overlap(ball, block_rect);
+        if (Vector2LengthSqr(new.undo_move) > Vector2LengthSqr(max.undo_move)) {
+          max = new;
           out_row = row;
           out_col = col;
         }
@@ -175,30 +193,34 @@ static Vector2 check_block_collisions(Rectangle ball, size_t *row,
 
   *row = out_row;
   *col = out_col;
-  return max_overlap;
+  return max;
 }
 
-static Vector2 check_wall_collisions(Rectangle ball) {
-  Vector2 max_overlap = Vector2Zero();
-  for (size_t i = 0; i < GAME_WALL_COUNT; i++) {
+static CollisionResult check_wall_collisions(Rectangle ball) {
+  CollisionResult max = (CollisionResult){
+      .undo_move = Vector2Zero(),
+      .reflection = Vector2Zero(),
+  };
 
-    Vector2 new_overlap = check_overlap(ball, GAME_WALLS[i]);
-    if (Vector2LengthSqr(new_overlap) > Vector2LengthSqr(max_overlap)) {
-      printf("HIT WALL %zu\n", i);
-      max_overlap = new_overlap;
+  for (size_t i = 0; i < GAME_WALL_COUNT; i++) {
+    CollisionResult new = check_overlap(ball, GAME_WALLS[i]);
+    if (Vector2LengthSqr(new.undo_move) > Vector2LengthSqr(max.undo_move)) {
+      max = new;
     }
   }
 
-  return max_overlap;
+  return max;
 }
 
-static Vector2 check_platform_collisions(Rectangle ball) {
+static CollisionResult check_platform_collisions(Rectangle ball) {
   Rectangle platform_rect = {
       .x = platform_pos.x - (cur_platform_width / 2.0),
       .y = platform_pos.y - (PLATFORM_HEIGHT / 2.0),
       .width = cur_platform_width,
       .height = PLATFORM_HEIGHT,
   };
+
+  // TODO: Adjust reflection if hit to allow control of the ball
   return check_overlap(ball, platform_rect);
 }
 
@@ -210,7 +232,7 @@ static void update_ball() {
     }
     ball_pos = (Vector2){
         .x = platform_pos.x,
-        .y = platform_pos.y - (BALL_SIZE / 2.0) - 2,
+        .y = platform_pos.y - (PLATFORM_HEIGHT / 2.0) - (BALL_SIZE / 2.0) - 2,
     };
     if (IsKeyDown(KEY_W) | IsKeyDown(KEY_UP)) {
       ball_active = true;
@@ -232,71 +254,64 @@ static void update_ball() {
   float distance_to_move =
       frame_time * (ball_speed == SLOW ? SLOW_BALL_MOVMENT_PER_MS
                                        : FAST_BALL_MOVMENT_PER_MS);
+  printf("CHECKING COLLISIONS\n");
+  // while (distance_to_move > 0.005) {
+  Vector2 ball_movement = Vector2Scale(ball_dir, distance_to_move);
 
+  printf("OLD POS {x = %f, y =%f}\n", ball_pos.x, ball_pos.y);
+  printf("MOV  {x = %f, y =%f}\n", ball_movement.x, ball_movement.y);
+  ball_pos = Vector2Add(ball_pos, ball_movement);
+  printf("NEW POS {x = %f, y =%f}\n", ball_pos.x, ball_pos.y);
   Rectangle ball = {
       .x = ball_pos.x - (BALL_SIZE / 2.0),
       .y = ball_pos.y - (BALL_SIZE / 2.0),
       .width = BALL_SIZE,
       .height = BALL_SIZE,
   };
-  // while (distance_to_move > 0.005) {
-  printf("CHECKING COLLISIONS\n");
-  Vector2 ball_movement = Vector2Scale(ball_dir, distance_to_move);
-  ball_pos = Vector2Add(ball_pos, ball_movement);
-
   size_t overlap_row = -1;
   size_t overlap_col = -1;
-  Vector2 block_overlap =
+  CollisionResult block_overlap =
       check_block_collisions(ball, &overlap_row, &overlap_col);
-  float block_overlap_amount = Vector2LengthSqr(block_overlap);
+  float block_overlap_amount = Vector2LengthSqr(block_overlap.undo_move);
 
-  Vector2 wall_overlap = check_wall_collisions(ball);
-  float wall_overlap_amount = Vector2LengthSqr(wall_overlap);
+  CollisionResult wall_overlap = check_wall_collisions(ball);
+  float wall_overlap_amount = Vector2LengthSqr(wall_overlap.undo_move);
 
-  Vector2 platform_overlap = check_wall_collisions(ball);
-  float platform_overlap_amount = Vector2LengthSqr(platform_overlap);
+  CollisionResult platform_overlap = check_platform_collisions(ball);
+  float platform_overlap_amount = Vector2LengthSqr(platform_overlap.undo_move);
 
-  Vector2 largest_overlap =
+  CollisionResult largest_overlap =
       block_overlap_amount > wall_overlap_amount &&
               block_overlap_amount > platform_overlap_amount
           ? block_overlap
       : wall_overlap_amount > platform_overlap_amount ? wall_overlap
                                                       : platform_overlap;
 
-  printf("LARGEST OVERLAP {x = %f, y = %f}\n", largest_overlap.x,
-         largest_overlap.y);
-
-  if (Vector2LengthSqr(largest_overlap) == 0.0) {
+  if (Vector2LengthSqr(largest_overlap.undo_move) == 0.0) {
     printf("HIT NOTHING\n");
     return;
   }
 
-  if (Vector2Equals(largest_overlap, block_overlap)) {
+  if (Vector2Equals(largest_overlap.undo_move, block_overlap.undo_move)) {
     printf("HIT BLOCK row = %zu, col = %zu\n", overlap_row, overlap_col);
     assert(overlap_row != -1 && overlap_col != -1);
-    assert(grid[overlap_row][overlap_col] == PRESNT);
+    assert(grid[overlap_row][overlap_col] == PRESENT);
     grid[overlap_row][overlap_col] = BROKEN;
-  } else if (Vector2Equals(largest_overlap, wall_overlap)) {
+  } else if (Vector2Equals(largest_overlap.undo_move, wall_overlap.undo_move)) {
     printf("HIT WALL\n");
-  } else if (Vector2Equals(largest_overlap, platform_overlap)) {
+  } else if (Vector2Equals(largest_overlap.undo_move,
+                           platform_overlap.undo_move)) {
     printf("HIT PLATFORM\n");
   }
+  printf("RESULT = {UNDO = {x = %f, y = %f}, REF = {x = %f, y = %f}}\n",
+         largest_overlap.undo_move.x, largest_overlap.undo_move.y,
+         largest_overlap.reflection.x, largest_overlap.reflection.y);
 
-  ball_pos = Vector2Add(ball_pos, largest_overlap);
-  distance_to_move -= Vector2Length(Vector2Add(ball_movement, largest_overlap));
+  ball_pos = Vector2Add(ball_pos, largest_overlap.undo_move);
+  distance_to_move -=
+      Vector2Length(Vector2Add(ball_movement, largest_overlap.undo_move));
 
-  if (false && Vector2Equals(largest_overlap, platform_overlap)) {
-    // TODO: special logic for platoform colisions to allow more control of
-    // ball
-  } else {
-    Vector2 adjustment = fabsf(platform_overlap.x) > fabsf(platform_overlap.y)
-                             ? (Vector2){.x = -1, .y = 1}
-                             : (Vector2){.x = 1, .y = -1};
-    printf("OLD DIR {x = %f, y =%f}\n", ball_movement.x, ball_movement.y);
-    printf("ADJUSTMENT  {x = %f, y =%f}\n", adjustment.x, adjustment.y);
-    ball_movement = Vector2Multiply(ball_movement, adjustment);
-    printf("NEW DIR {x = %f, y =%f}\n", ball_movement.x, ball_movement.y);
-  }
+  ball_dir = Vector2Multiply(ball_dir, largest_overlap.reflection);
   // }
 }
 
@@ -331,7 +346,7 @@ void draw_game(void) {
   DrawRectangleRec(ball_rect, COLOR_BALL);
   for (size_t row = 0; row < GRID_HEIGHT; row++) {
     for (size_t col = 0; col < GRID_WIDTH; col++) {
-      if (grid[row][col] == PRESNT) {
+      if (grid[row][col] == PRESENT) {
         Rectangle block_rect = {
             .x = GAME_START + BLOCK_MARGIN + (BLOCK_MARGIN + BLOCK_WIDTH) * col,
             .y = GRID_START_Y + (BLOCK_MARGIN + BLOCK_HEIGHT) * row,
