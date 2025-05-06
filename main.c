@@ -4,7 +4,6 @@
 int main(void) {
   SetConfigFlags(FLAG_WINDOW_HIGHDPI);
   InitWindow(WINDOW_WIDTH, WINDOW_HEIGHT, WINDOW_TITLE);
-  SetTargetFPS(60);
 
   while (!WindowShouldClose()) {
     update();
