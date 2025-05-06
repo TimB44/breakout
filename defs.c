@@ -1,7 +1,7 @@
 #include "defs.h"
 
 // constants (definitions)
-const char *WINDOW_TITLE = "Pong Game";
+const char *WINDOW_TITLE = "Breakout Game";
 
 const float MENU_ROUNDESS = 0.2;
 
