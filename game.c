@@ -2,6 +2,7 @@
 #include "math.h"
 #include "raylib.h"
 #include "raymath.h"
+#include <assert.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,6 +22,8 @@
 #define PLATFORM_MOVMENT_PER_MS 0.25
 #define PLATFORM_Y_POS 600 - 100
 #define PLATFORM_HEIGHT 10
+#define PLATFORM_EDGE_X_MOV 0.8
+static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 
 #define SLOW_BALL_MOVMENT_PER_MS 0.2
 #define FAST_BALL_MOVMENT_PER_MS 0.4
@@ -80,7 +83,7 @@ typedef enum Level {
 
 typedef struct CollisionResult {
   Vector2 undo_move;
-  Vector2 reflection;
+  Vector2 new_dir;
 } CollisionResult;
 
 // false => present
@@ -144,7 +147,7 @@ static CollisionResult check_overlap(Rectangle ball, Rectangle obstacle) {
   if (horizontal_overlap < 0 || vertical_overlap < 0)
     return (CollisionResult){
         .undo_move = Vector2Zero(),
-        .reflection = Vector2Zero(),
+        .new_dir = Vector2Zero(),
     };
 
   Vector2 dir_to_move = Vector2Scale(ball_dir, -1);
@@ -158,7 +161,7 @@ static CollisionResult check_overlap(Rectangle ball, Rectangle obstacle) {
                            : (Vector2){.x = 1, .y = -1};
   return (CollisionResult){
       .undo_move = dir_to_move,
-      .reflection = reflection,
+      .new_dir = Vector2Multiply(ball_dir, reflection),
   };
 }
 
@@ -166,7 +169,7 @@ static CollisionResult check_block_collisions(Rectangle ball, size_t *row,
                                               size_t *col) {
   CollisionResult max = (CollisionResult){
       .undo_move = Vector2Zero(),
-      .reflection = Vector2Zero(),
+      .new_dir = Vector2Zero(),
   };
 
   int out_row = -1;
@@ -199,7 +202,7 @@ static CollisionResult check_block_collisions(Rectangle ball, size_t *row,
 static CollisionResult check_wall_collisions(Rectangle ball) {
   CollisionResult max = (CollisionResult){
       .undo_move = Vector2Zero(),
-      .reflection = Vector2Zero(),
+      .new_dir = Vector2Zero(),
   };
 
   for (size_t i = 0; i < GAME_WALL_COUNT; i++) {
@@ -221,7 +224,18 @@ static CollisionResult check_platform_collisions(Rectangle ball) {
   };
 
   // TODO: Adjust reflection if hit to allow control of the ball
-  return check_overlap(ball, platform_rect);
+  CollisionResult result = check_overlap(ball, platform_rect);
+  if (result.new_dir.y < 0.0) {
+    float platform_center_x = platform_pos.x;
+    float ball_center_x = ball_pos.x;
+    float diff = ball_center_x - platform_center_x;
+    float ratio = diff / (cur_platform_width / 2.0);
+    float x_dir = ratio * PLATFORM_EDGE_X_MOV;
+    float y_dir = sqrtf(1.0 - x_dir * x_dir) * result.new_dir.y < 0.0 ? -1 : 1;
+    result.new_dir = (Vector2){.x = x_dir, .y = y_dir};
+  }
+
+  return result;
 }
 
 static void update_ball() {
@@ -254,65 +268,56 @@ static void update_ball() {
   float distance_to_move =
       frame_time * (ball_speed == SLOW ? SLOW_BALL_MOVMENT_PER_MS
                                        : FAST_BALL_MOVMENT_PER_MS);
-  printf("CHECKING COLLISIONS\n");
-  // while (distance_to_move > 0.005) {
-  Vector2 ball_movement = Vector2Scale(ball_dir, distance_to_move);
+  while (distance_to_move > 0.005) {
+    Vector2 ball_movement = Vector2Scale(ball_dir, distance_to_move);
 
-  printf("OLD POS {x = %f, y =%f}\n", ball_pos.x, ball_pos.y);
-  printf("MOV  {x = %f, y =%f}\n", ball_movement.x, ball_movement.y);
-  ball_pos = Vector2Add(ball_pos, ball_movement);
-  printf("NEW POS {x = %f, y =%f}\n", ball_pos.x, ball_pos.y);
-  Rectangle ball = {
-      .x = ball_pos.x - (BALL_SIZE / 2.0),
-      .y = ball_pos.y - (BALL_SIZE / 2.0),
-      .width = BALL_SIZE,
-      .height = BALL_SIZE,
-  };
-  size_t overlap_row = -1;
-  size_t overlap_col = -1;
-  CollisionResult block_overlap =
-      check_block_collisions(ball, &overlap_row, &overlap_col);
-  float block_overlap_amount = Vector2LengthSqr(block_overlap.undo_move);
+    ball_pos = Vector2Add(ball_pos, ball_movement);
+    Rectangle ball = {
+        .x = ball_pos.x - (BALL_SIZE / 2.0),
+        .y = ball_pos.y - (BALL_SIZE / 2.0),
+        .width = BALL_SIZE,
+        .height = BALL_SIZE,
+    };
+    size_t overlap_row = -1;
+    size_t overlap_col = -1;
+    CollisionResult block_overlap =
+        check_block_collisions(ball, &overlap_row, &overlap_col);
+    float block_overlap_amount = Vector2LengthSqr(block_overlap.undo_move);
 
-  CollisionResult wall_overlap = check_wall_collisions(ball);
-  float wall_overlap_amount = Vector2LengthSqr(wall_overlap.undo_move);
+    CollisionResult wall_overlap = check_wall_collisions(ball);
+    float wall_overlap_amount = Vector2LengthSqr(wall_overlap.undo_move);
 
-  CollisionResult platform_overlap = check_platform_collisions(ball);
-  float platform_overlap_amount = Vector2LengthSqr(platform_overlap.undo_move);
+    CollisionResult platform_overlap = check_platform_collisions(ball);
+    float platform_overlap_amount =
+        Vector2LengthSqr(platform_overlap.undo_move);
 
-  CollisionResult largest_overlap =
-      block_overlap_amount > wall_overlap_amount &&
-              block_overlap_amount > platform_overlap_amount
-          ? block_overlap
-      : wall_overlap_amount > platform_overlap_amount ? wall_overlap
-                                                      : platform_overlap;
+    CollisionResult largest_overlap =
+        block_overlap_amount > wall_overlap_amount &&
+                block_overlap_amount > platform_overlap_amount
+            ? block_overlap
+        : wall_overlap_amount > platform_overlap_amount ? wall_overlap
+                                                        : platform_overlap;
 
-  if (Vector2LengthSqr(largest_overlap.undo_move) == 0.0) {
-    printf("HIT NOTHING\n");
-    return;
+    if (Vector2LengthSqr(largest_overlap.undo_move) == 0.0) {
+      return;
+    }
+
+    if (Vector2Equals(largest_overlap.undo_move, block_overlap.undo_move)) {
+      assert(overlap_row != -1 && overlap_col != -1);
+      assert(grid[overlap_row][overlap_col] == PRESENT);
+      grid[overlap_row][overlap_col] = BROKEN;
+    } else if (Vector2Equals(largest_overlap.undo_move,
+                             wall_overlap.undo_move)) {
+    } else if (Vector2Equals(largest_overlap.undo_move,
+                             platform_overlap.undo_move)) {
+    }
+
+    ball_pos = Vector2Add(ball_pos, largest_overlap.undo_move);
+    distance_to_move -=
+        Vector2Length(Vector2Add(ball_movement, largest_overlap.undo_move));
+
+    ball_dir = largest_overlap.new_dir;
   }
-
-  if (Vector2Equals(largest_overlap.undo_move, block_overlap.undo_move)) {
-    printf("HIT BLOCK row = %zu, col = %zu\n", overlap_row, overlap_col);
-    assert(overlap_row != -1 && overlap_col != -1);
-    assert(grid[overlap_row][overlap_col] == PRESENT);
-    grid[overlap_row][overlap_col] = BROKEN;
-  } else if (Vector2Equals(largest_overlap.undo_move, wall_overlap.undo_move)) {
-    printf("HIT WALL\n");
-  } else if (Vector2Equals(largest_overlap.undo_move,
-                           platform_overlap.undo_move)) {
-    printf("HIT PLATFORM\n");
-  }
-  printf("RESULT = {UNDO = {x = %f, y = %f}, REF = {x = %f, y = %f}}\n",
-         largest_overlap.undo_move.x, largest_overlap.undo_move.y,
-         largest_overlap.reflection.x, largest_overlap.reflection.y);
-
-  ball_pos = Vector2Add(ball_pos, largest_overlap.undo_move);
-  distance_to_move -=
-      Vector2Length(Vector2Add(ball_movement, largest_overlap.undo_move));
-
-  ball_dir = Vector2Multiply(ball_dir, largest_overlap.reflection);
-  // }
 }
 
 void update_game(void) {
