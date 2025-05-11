@@ -388,7 +388,14 @@ void draw_game(void) {
       .height = BALL_SIZE,
   };
 
-  DrawRectangleRec(ball_rect, COLOR_BALL);
+  float end = fminf(ball_rect.y + ball_rect.height, GAME_END_Y);
+  ball_rect.height = end - ball_rect.y;
+  if (ball_rect.y < GAME_END_Y) {
+    printf("RECT = {X = %f, Y = %f, W = %f, H = %f}\n", ball_rect.x,
+           ball_rect.y, ball_rect.width, ball_rect.height);
+    DrawRectangleRec(ball_rect, COLOR_BALL);
+  }
+
   for (size_t row = 0; row < GRID_HEIGHT; row++) {
     for (size_t col = 0; col < GRID_WIDTH; col++) {
       if (grid[row][col] == PRESENT) {
