@@ -25,8 +25,6 @@
 #define PLATFORM_EDGE_X_MOV 0.8
 static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 
-#define SLOW_BALL_MOVMENT_PER_MS 0.2
-#define FAST_BALL_MOVMENT_PER_MS 0.4
 #define BALL_SIZE 10
 #define DEATH_LINE_Y WINDOW_HEIGHT
 
@@ -39,7 +37,11 @@ static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 #define PRESENT false
 #define BROKEN true
 
-#define BLOCK_COLOR_GROUP_SIZE 2
+#define BLOCK_GROUP_SIZE 2
+#define BLOCK_HIT_SPEED_INCREASE_1 4
+#define BLOCK_HIT_SPEED_INCREASE_2 12
+#define RED_ROW_INDEX 0
+#define ORANGE_ROW_INDEX 1
 
 #define GAME_WALL_WIDTH 10
 #define GAME_WALL_COUNT 3
@@ -52,11 +54,6 @@ static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 #define SCORE_NUM_START_INDEX 7
 #define SCORE_NUM_MAX_LEN 3
 
-typedef enum BallSpeed {
-  SLOW,
-  FAST,
-} BallSpeed;
-
 typedef enum Level {
   FIRST,
   SECOND,
@@ -67,15 +64,18 @@ typedef struct CollisionResult {
   Vector2 new_dir;
 } CollisionResult;
 
-static const Color BLOCK_COLORS[GRID_WIDTH / BLOCK_COLOR_GROUP_SIZE] = {
+static const Color BLOCK_COLORS[GRID_WIDTH / BLOCK_GROUP_SIZE] = {
     {.r = 150, .g = 44, .b = 25, .a = 255},
     {.r = 185, .g = 136, .b = 47, .a = 255},
     {.r = 59, .g = 131, .b = 61, .a = 255},
     {.r = 194, .g = 194, .b = 74, .a = 255},
 };
 
-static const size_t ROW_TO_POINTS[GRID_HEIGHT] = {
-    1, 1, 3, 3, 5, 5, 7, 7,
+static const size_t ROW_TO_POINTS[GRID_HEIGHT / BLOCK_GROUP_SIZE] = {
+    7,
+    5,
+    3,
+    1,
 };
 
 static const Rectangle GAME_WALLS[GAME_WALL_COUNT] = {
@@ -83,7 +83,7 @@ static const Rectangle GAME_WALLS[GAME_WALL_COUNT] = {
         .x = GAME_START - GRID_WIDTH,
         .y = GAME_START_Y,
         .width = GAME_WALL_WIDTH,
-        .height = GAME_HEIGHT,
+        .height = WINDOW_HEIGHT,
     },
     {
         .x = GAME_START,
@@ -95,15 +95,16 @@ static const Rectangle GAME_WALLS[GAME_WALL_COUNT] = {
         .x = GAME_START + GAME_WIDTH,
         .y = GAME_START_Y,
         .width = GAME_WALL_WIDTH,
-        .height = GAME_HEIGHT,
+        .height = WINDOW_HEIGHT,
     },
 };
+static const float BALL_SPEEDS[5] = {0.2, 0.25, 0.3, 0.38, 0.45};
 
 // false => present
 // true  => broken
 static bool grid[GRID_HEIGHT][GRID_WIDTH];
 
-static BallSpeed ball_speed;
+static size_t cur_ball_speed_index;
 static Level current_level;
 static size_t cur_platform_width;
 static size_t balls_left;
@@ -120,15 +121,21 @@ static Vector2 ball_dir;
 static Vector2 platform_pos;
 static float platform_x_vel;
 
+static size_t block_hits;
+static bool hit_orange;
+static bool hit_red;
+
 void init_game(void) {
   memset(grid, 0, sizeof(grid));
-  ball_speed = SLOW;
+  cur_ball_speed_index = 0;
   current_level = FIRST;
   cur_platform_width = LARGE_PLATFORM_WIDTH;
   balls_left = STARTING_BALLS;
   score = 0;
   ball_active = false;
-
+  block_hits = 0;
+  hit_orange = false;
+  hit_red = false;
   ball_pos = (Vector2){.x = 0, .y = 0};
   ball_dir = (Vector2){.x = 0, .y = 0};
   platform_pos =
@@ -283,9 +290,7 @@ static void update_ball() {
   }
 
   float frame_time = GetFrameTime() * 1000;
-  float distance_to_move =
-      frame_time * (ball_speed == SLOW ? SLOW_BALL_MOVMENT_PER_MS
-                                       : FAST_BALL_MOVMENT_PER_MS);
+  float distance_to_move = frame_time * BALL_SPEEDS[cur_ball_speed_index];
   while (distance_to_move > 0.005) {
     Vector2 ball_movement = Vector2Scale(ball_dir, distance_to_move);
 
@@ -323,8 +328,28 @@ static void update_ball() {
     if (Vector2Equals(largest_overlap.undo_move, block_overlap.undo_move)) {
       assert(overlap_row != -1 && overlap_col != -1);
       assert(grid[overlap_row][overlap_col] == PRESENT);
+      size_t block_row = overlap_row / BLOCK_GROUP_SIZE;
       grid[overlap_row][overlap_col] = BROKEN;
-      score += ROW_TO_POINTS[overlap_row];
+      score += ROW_TO_POINTS[block_row];
+      block_hits++;
+      if (block_hits == BLOCK_HIT_SPEED_INCREASE_1) {
+        cur_ball_speed_index++;
+
+      } else if (block_hits == BLOCK_HIT_SPEED_INCREASE_2) {
+        cur_ball_speed_index++;
+      }
+
+      if (block_row == RED_ROW_INDEX && !hit_orange) {
+        cur_ball_speed_index++;
+        hit_orange = true;
+
+      } else if (block_row == ORANGE_ROW_INDEX && !hit_red) {
+        cur_ball_speed_index++;
+        hit_red = true;
+      }
+      printf("BALL SPEED %zu\n", cur_ball_speed_index);
+      assert(cur_ball_speed_index < ARRAY_LEN(BALL_SPEEDS));
+
       // TODO check for empty grid and move to next level
     } else if (Vector2Equals(largest_overlap.undo_move,
                              wall_overlap.undo_move)) {
@@ -391,8 +416,6 @@ void draw_game(void) {
   float end = fminf(ball_rect.y + ball_rect.height, GAME_END_Y);
   ball_rect.height = end - ball_rect.y;
   if (ball_rect.y < GAME_END_Y) {
-    printf("RECT = {X = %f, Y = %f, W = %f, H = %f}\n", ball_rect.x,
-           ball_rect.y, ball_rect.width, ball_rect.height);
     DrawRectangleRec(ball_rect, COLOR_BALL);
   }
 
@@ -406,8 +429,7 @@ void draw_game(void) {
             .height = BLOCK_HEIGHT,
         };
 
-        DrawRectangleRec(block_rect,
-                         BLOCK_COLORS[row / BLOCK_COLOR_GROUP_SIZE]);
+        DrawRectangleRec(block_rect, BLOCK_COLORS[row / BLOCK_GROUP_SIZE]);
       }
     }
   }
