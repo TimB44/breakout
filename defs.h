@@ -51,6 +51,10 @@ void init_game(void);
 void update_game(void);
 void draw_game(void);
 
+// end.c
+void update_end(void);
+void draw_end(void);
+
 // utils.c
 void draw_text_centered(const char *, size_t, size_t, size_t);
 bool mouse_over(Rectangle);

@@ -23,7 +23,7 @@ void update(void) {
     update_game();
     break;
   case END:
-    // current_state = HOME;
+    update_end();
     break;
   default:
     assert(false);
@@ -42,7 +42,7 @@ void draw(void) {
     draw_game();
     break;
   case END:
-    DrawText("END", 0, 0, 20, RAYWHITE);
+    draw_end();
     break;
   }
   EndDrawing();

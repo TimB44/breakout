@@ -12,7 +12,9 @@ add_executable(breakout
   utils.c
   home.c
   game.c
+  end.c
 )
+
 target_link_libraries(breakout raylib)
 target_include_directories(breakout PRIVATE
   ./external/raylib/src/
