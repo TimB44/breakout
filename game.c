@@ -20,13 +20,14 @@
 #define GRID_START_Y 50
 
 #define PLATFORM_MOVMENT_PER_MS 0.25
-#define PLATFORM_Y_POS 600 - 100
+#define PLATFORM_Y_POS 500
 #define PLATFORM_HEIGHT 10
 #define PLATFORM_EDGE_X_MOV 0.8
 static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 
 #define BALL_SIZE 10
 #define DEATH_LINE_Y WINDOW_HEIGHT
+#define BLOCK_RESPAWN_LINE_Y 300
 
 #define GAME_WIDTH (BLOCK_WIDTH * GRID_WIDTH + (GRID_WIDTH + 1) * BLOCK_MARGIN)
 #define GAME_HEIGHT 550
@@ -50,7 +51,7 @@ static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 
 // #define BALL_CHAR '⬜'
 // TODO: use box but acount for it being 3 bytes
-#define BALL_CHAR 'X'
+#define BALL_CHAR 'O'
 #define BALL_CHAR_START_INDEX 7
 #define BALL_CHAR_MAX_LEN 3
 #define SCORE_NUM_START_INDEX 7
@@ -135,6 +136,7 @@ void init_game(void) {
   balls_left = STARTING_BALLS;
   score = 0;
   ball_active = false;
+
   block_hits = 0;
   hit_orange = false;
   hit_red = false;
@@ -357,7 +359,6 @@ static void update_ball() {
       }
       assert(cur_ball_speed_index < ARRAY_LEN(BALL_SPEEDS));
 
-      // TODO check for empty grid and move to next level
     } else if (Vector2Equals(largest_overlap.undo_move,
                              wall_overlap.undo_move)) {
       if (hit_ceiling) {
@@ -373,10 +374,18 @@ static void update_ball() {
 
     ball_dir = largest_overlap.new_dir;
   }
+  if (block_hits == GRID_HEIGHT * GRID_WIDTH && grid[0][0] == BROKEN &&
+      ball_pos.y > BLOCK_RESPAWN_LINE_Y) {
+    for (int i = 0; i < GRID_HEIGHT; i++) {
+      for (int j = 0; j < GRID_WIDTH; j++) {
+        assert(grid[i][j] == BROKEN);
+        grid[i][j] = PRESENT;
+      }
+    }
+  }
 
   if (ball_pos.y > DEATH_LINE_Y) {
     ball_active = false;
-    printf("KILLED_BALL\n");
   }
 }
 
