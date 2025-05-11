@@ -45,6 +45,7 @@ static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 
 #define GAME_WALL_WIDTH 10
 #define GAME_WALL_COUNT 3
+#define GAME_WALL_CEILING_INDEX 1
 
 // #define BALL_CHAR '⬜'
 // TODO: use box but acount for it being 3 bytes
@@ -225,19 +226,23 @@ static CollisionResult check_block_collisions(Rectangle ball, size_t *row,
   return max;
 }
 
-static CollisionResult check_wall_collisions(Rectangle ball) {
+static CollisionResult check_wall_collisions(Rectangle ball,
+                                             bool *hit_ceiling) {
   CollisionResult max = (CollisionResult){
       .undo_move = Vector2Zero(),
       .new_dir = Vector2Zero(),
   };
+  bool hit_ceiling_out = false;
 
   for (size_t i = 0; i < GAME_WALL_COUNT; i++) {
     CollisionResult new = check_overlap(ball, GAME_WALLS[i]);
     if (Vector2LengthSqr(new.undo_move) > Vector2LengthSqr(max.undo_move)) {
+      hit_ceiling_out = i == GAME_WALL_CEILING_INDEX;
       max = new;
     }
   }
 
+  *hit_ceiling = hit_ceiling_out;
   return max;
 }
 
@@ -307,7 +312,8 @@ static void update_ball() {
         check_block_collisions(ball, &overlap_row, &overlap_col);
     float block_overlap_amount = Vector2LengthSqr(block_overlap.undo_move);
 
-    CollisionResult wall_overlap = check_wall_collisions(ball);
+    bool hit_ceiling;
+    CollisionResult wall_overlap = check_wall_collisions(ball, &hit_ceiling);
     float wall_overlap_amount = Vector2LengthSqr(wall_overlap.undo_move);
 
     CollisionResult platform_overlap = check_platform_collisions(ball);
@@ -353,6 +359,9 @@ static void update_ball() {
       // TODO check for empty grid and move to next level
     } else if (Vector2Equals(largest_overlap.undo_move,
                              wall_overlap.undo_move)) {
+      if (hit_ceiling) {
+        cur_platform_width = SMALL_PLATFORM_WIDTH;
+      }
     } else if (Vector2Equals(largest_overlap.undo_move,
                              platform_overlap.undo_move)) {
     }
