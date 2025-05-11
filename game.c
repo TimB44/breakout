@@ -28,12 +28,13 @@ static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 #define SLOW_BALL_MOVMENT_PER_MS 0.2
 #define FAST_BALL_MOVMENT_PER_MS 0.4
 #define BALL_SIZE 10
+#define DEATH_LINE_Y WINDOW_HEIGHT
 
 #define GAME_WIDTH (BLOCK_WIDTH * GRID_WIDTH + (GRID_WIDTH + 1) * BLOCK_MARGIN)
 #define GAME_HEIGHT 550
 #define GAME_START ((WINDOW_WIDTH - GAME_WIDTH) / 2.0f)
 #define GAME_START_Y (WINDOW_HEIGHT - GAME_HEIGHT) / 2.0
-
+#define GAME_END_Y GAME_START_Y + GAME_HEIGHT
 #define GAME_BORDER_WIDTH 3
 #define PRESENT false
 #define BROKEN true
@@ -316,7 +317,7 @@ static void update_ball() {
                                                         : platform_overlap;
 
     if (Vector2LengthSqr(largest_overlap.undo_move) == 0.0) {
-      return;
+      break;
     }
 
     if (Vector2Equals(largest_overlap.undo_move, block_overlap.undo_move)) {
@@ -336,6 +337,11 @@ static void update_ball() {
         Vector2Length(Vector2Add(ball_movement, largest_overlap.undo_move));
 
     ball_dir = largest_overlap.new_dir;
+  }
+
+  if (ball_pos.y > DEATH_LINE_Y) {
+    ball_active = false;
+    printf("KILLED_BALL\n");
   }
 }
 
