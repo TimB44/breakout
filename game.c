@@ -30,7 +30,8 @@ static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 
 #define GAME_WIDTH (BLOCK_WIDTH * GRID_WIDTH + (GRID_WIDTH + 1) * BLOCK_MARGIN)
 #define GAME_HEIGHT 550
-#define GAME_START ((WINDOW_WIDTH - GAME_WIDTH) / 2.0f)
+#define GAME_START_X ((WINDOW_WIDTH - GAME_WIDTH) / 2.0f)
+#define GAME_END_X GAME_START_X + GAME_WIDTH
 #define GAME_START_Y (WINDOW_HEIGHT - GAME_HEIGHT) / 2.0
 #define GAME_END_Y GAME_START_Y + GAME_HEIGHT
 #define GAME_BORDER_WIDTH 3
@@ -81,19 +82,19 @@ static const size_t ROW_TO_POINTS[GRID_HEIGHT / BLOCK_GROUP_SIZE] = {
 
 static const Rectangle GAME_WALLS[GAME_WALL_COUNT] = {
     {
-        .x = GAME_START - GRID_WIDTH,
+        .x = GAME_START_X - GRID_WIDTH,
         .y = GAME_START_Y,
         .width = GAME_WALL_WIDTH,
         .height = WINDOW_HEIGHT,
     },
     {
-        .x = GAME_START,
+        .x = GAME_START_X,
         .y = GAME_START_Y - GAME_WALL_WIDTH,
         .width = GAME_WIDTH,
         .height = GAME_WALL_WIDTH,
     },
     {
-        .x = GAME_START + GAME_WIDTH,
+        .x = GAME_END_X,
         .y = GAME_START_Y,
         .width = GAME_WALL_WIDTH,
         .height = WINDOW_HEIGHT,
@@ -140,7 +141,7 @@ void init_game(void) {
   ball_pos = (Vector2){.x = 0, .y = 0};
   ball_dir = (Vector2){.x = 0, .y = 0};
   platform_pos =
-      (Vector2){.x = GAME_START + (GAME_WIDTH / 2.0), .y = PLATFORM_Y_POS};
+      (Vector2){.x = GAME_START_X + (GAME_WIDTH / 2.0), .y = PLATFORM_Y_POS};
 }
 
 static void update_platform() {
@@ -153,8 +154,8 @@ static void update_platform() {
     platform_x_vel = 0;
   }
 
-  float min_x = GAME_START + (cur_platform_width / 2.0);
-  float max_x = GAME_START + GAME_WIDTH - (cur_platform_width / 2.0);
+  float min_x = GAME_START_X + (cur_platform_width / 2.0);
+  float max_x = GAME_END_X - (cur_platform_width / 2.0);
   float new_x = platform_pos.x + frame_time * platform_x_vel;
   new_x = fmaxf(new_x, min_x);
   new_x = fminf(new_x, max_x);
@@ -206,7 +207,8 @@ static CollisionResult check_block_collisions(Rectangle ball, size_t *row,
     for (size_t col = 0; col < GRID_WIDTH; col++) {
       if (!grid[row][col]) {
         Rectangle block_rect = {
-            .x = GAME_START + BLOCK_MARGIN + (BLOCK_MARGIN + BLOCK_WIDTH) * col,
+            .x = GAME_START_X + BLOCK_MARGIN +
+                 (BLOCK_MARGIN + BLOCK_WIDTH) * col,
             .y = GRID_START_Y + (BLOCK_MARGIN + BLOCK_HEIGHT) * row,
             .width = BLOCK_WIDTH,
             .height = BLOCK_HEIGHT,
@@ -334,9 +336,9 @@ static void update_ball() {
     if (Vector2Equals(largest_overlap.undo_move, block_overlap.undo_move)) {
       assert(overlap_row != -1 && overlap_col != -1);
       assert(grid[overlap_row][overlap_col] == PRESENT);
-      size_t block_row = overlap_row / BLOCK_GROUP_SIZE;
+      size_t block_layer = overlap_row / BLOCK_GROUP_SIZE;
       grid[overlap_row][overlap_col] = BROKEN;
-      score += ROW_TO_POINTS[block_row];
+      score += ROW_TO_POINTS[block_layer];
       block_hits++;
       if (block_hits == BLOCK_HIT_SPEED_INCREASE_1) {
         cur_ball_speed_index++;
@@ -345,15 +347,14 @@ static void update_ball() {
         cur_ball_speed_index++;
       }
 
-      if (block_row == RED_ROW_INDEX && !hit_orange) {
+      if (block_layer == RED_ROW_INDEX && !hit_orange) {
         cur_ball_speed_index++;
         hit_orange = true;
 
-      } else if (block_row == ORANGE_ROW_INDEX && !hit_red) {
+      } else if (block_layer == ORANGE_ROW_INDEX && !hit_red) {
         cur_ball_speed_index++;
         hit_red = true;
       }
-      printf("BALL SPEED %zu\n", cur_ball_speed_index);
       assert(cur_ball_speed_index < ARRAY_LEN(BALL_SPEEDS));
 
       // TODO check for empty grid and move to next level
@@ -401,7 +402,7 @@ void draw_board_info(void) {
 void draw_game(void) {
   DrawRectangleRec(
       (Rectangle){
-          .x = GAME_START,
+          .x = GAME_START_X,
           .y = (WINDOW_HEIGHT - GAME_HEIGHT) / 2.0,
           .width = GAME_WIDTH,
           .height = GAME_HEIGHT,
@@ -432,7 +433,8 @@ void draw_game(void) {
     for (size_t col = 0; col < GRID_WIDTH; col++) {
       if (grid[row][col] == PRESENT) {
         Rectangle block_rect = {
-            .x = GAME_START + BLOCK_MARGIN + (BLOCK_MARGIN + BLOCK_WIDTH) * col,
+            .x = GAME_START_X + BLOCK_MARGIN +
+                 (BLOCK_MARGIN + BLOCK_WIDTH) * col,
             .y = GRID_START_Y + (BLOCK_MARGIN + BLOCK_HEIGHT) * row,
             .width = BLOCK_WIDTH,
             .height = BLOCK_HEIGHT,
