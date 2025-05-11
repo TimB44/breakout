@@ -8,6 +8,8 @@
 #define WINDOW_HEIGHT 600
 #define WINDOW_WIDTH 800
 
+#define ARRAY_LEN(arr) (sizeof(arr) / sizeof((arr)[0]))
+
 // types
 
 typedef enum GameState {

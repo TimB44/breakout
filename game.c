@@ -43,11 +43,38 @@ static_assert(PLATFORM_EDGE_X_MOV < 1.0, "X movment should be less then 1");
 #define GAME_WALL_WIDTH 10
 #define GAME_WALL_COUNT 3
 
+// #define BALL_CHAR '⬜'
+// TODO: use box but acount for it being 3 bytes
+#define BALL_CHAR 'X'
+#define BALL_CHAR_START_INDEX 7
+#define BALL_CHAR_MAX_LEN 3
+#define SCORE_NUM_START_INDEX 7
+#define SCORE_NUM_MAX_LEN 3
+
+typedef enum BallSpeed {
+  SLOW,
+  FAST,
+} BallSpeed;
+
+typedef enum Level {
+  FIRST,
+  SECOND,
+} Level;
+
+typedef struct CollisionResult {
+  Vector2 undo_move;
+  Vector2 new_dir;
+} CollisionResult;
+
 static const Color BLOCK_COLORS[GRID_WIDTH / BLOCK_COLOR_GROUP_SIZE] = {
     {.r = 150, .g = 44, .b = 25, .a = 255},
     {.r = 185, .g = 136, .b = 47, .a = 255},
     {.r = 59, .g = 131, .b = 61, .a = 255},
     {.r = 194, .g = 194, .b = 74, .a = 255},
+};
+
+static const size_t ROW_TO_POINTS[GRID_HEIGHT] = {
+    1, 1, 3, 3, 5, 5, 7, 7,
 };
 
 static const Rectangle GAME_WALLS[GAME_WALL_COUNT] = {
@@ -71,21 +98,6 @@ static const Rectangle GAME_WALLS[GAME_WALL_COUNT] = {
     },
 };
 
-typedef enum BallSpeed {
-  SLOW,
-  FAST,
-} BallSpeed;
-
-typedef enum Level {
-  FIRST,
-  SECOND,
-} Level;
-
-typedef struct CollisionResult {
-  Vector2 undo_move;
-  Vector2 new_dir;
-} CollisionResult;
-
 // false => present
 // true  => broken
 static bool grid[GRID_HEIGHT][GRID_WIDTH];
@@ -94,10 +106,16 @@ static BallSpeed ball_speed;
 static Level current_level;
 static size_t cur_platform_width;
 static size_t balls_left;
+static char balls_left_str[BALL_CHAR_START_INDEX + BALL_CHAR_MAX_LEN + 1] =
+    "BALLS:    ";
 static size_t score;
+static char score_str[SCORE_NUM_START_INDEX + SCORE_NUM_MAX_LEN + 1] =
+    "SCORE:    ";
+
 static bool ball_active;
 static Vector2 ball_pos;
 static Vector2 ball_dir;
+
 static Vector2 platform_pos;
 static float platform_x_vel;
 
@@ -223,7 +241,6 @@ static CollisionResult check_platform_collisions(Rectangle ball) {
       .height = PLATFORM_HEIGHT,
   };
 
-  // TODO: Adjust reflection if hit to allow control of the ball
   CollisionResult result = check_overlap(ball, platform_rect);
   if (result.new_dir.y < 0.0) {
     float platform_center_x = platform_pos.x;
@@ -306,6 +323,8 @@ static void update_ball() {
       assert(overlap_row != -1 && overlap_col != -1);
       assert(grid[overlap_row][overlap_col] == PRESENT);
       grid[overlap_row][overlap_col] = BROKEN;
+      score += ROW_TO_POINTS[overlap_row];
+      // TODO check for empty grid and move to next level
     } else if (Vector2Equals(largest_overlap.undo_move,
                              wall_overlap.undo_move)) {
     } else if (Vector2Equals(largest_overlap.undo_move,
@@ -324,6 +343,21 @@ void update_game(void) {
   update_platform();
   update_ball();
 }
+
+void draw_board_info(void) {
+  for (int i = 0; i < BALL_CHAR_MAX_LEN; i++) {
+    if (i < balls_left) {
+      balls_left_str[BALL_CHAR_START_INDEX + i] = BALL_CHAR;
+    } else {
+      balls_left_str[BALL_CHAR_START_INDEX + i] = '\0';
+    }
+  }
+  DrawText(balls_left_str, 20, 50, 20, COLOR_TEXT);
+
+  snprintf(score_str, ARRAY_LEN(score_str), "SCORE: %zu", score);
+  DrawText(score_str, 20, 100, 20, COLOR_TEXT);
+}
+
 void draw_game(void) {
   DrawRectangleRec(
       (Rectangle){
@@ -364,4 +398,5 @@ void draw_game(void) {
       }
     }
   }
+  draw_board_info();
 }
